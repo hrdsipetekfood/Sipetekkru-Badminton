@@ -1,0 +1,6 @@
+{
+  "name": "Sipetekkru Badminton Schedule",
+  "description": "Badminton reservation and schedule management dashboard for Sipetekkru with RBAC, session rules, and Supabase RLS integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
