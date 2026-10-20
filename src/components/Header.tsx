@@ -184,10 +184,10 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Quick toggle button */}
               <button
                 onClick={onToggleRole}
-                className="ml-2 px-1.5 py-0.5 text-[9px] rounded font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
-                title={isAdmin ? 'Switch to Guest Mode' : 'Switch to Admin'}
+                className="ml-2 px-2 py-0.5 text-[9px] rounded font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+                title={isAdmin ? 'Keluar ke mode Tamu (Read-Only)' : 'Masuk sebagai Admin (hrdsipetekfood@gmail.com)'}
               >
-                {isAdmin ? 'Guest' : 'Admin'}
+                {isAdmin ? 'Logout' : 'Login Admin'}
               </button>
             </div>
 

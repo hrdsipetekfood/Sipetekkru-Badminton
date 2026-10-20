@@ -33,19 +33,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   if (!isOpen) return null;
 
-  // The active running development server URL (works right now)
-  const activeDevUrl = 'https://ais-dev-b2d4jgxm7fmujrghwywm36-807083370301.asia-southeast1.run.app?role=guest';
+  // Dynamic URL: Uses current deployment domain (e.g. sipetekkru-badminton.vercel.app) or AI Studio URL
+  const currentOrigin =
+    typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+      ? window.location.origin
+      : 'https://sipetekkru-badminton.vercel.app';
 
-  // The published revision URL (activated after clicking Share/Publish in AI Studio UI)
-  const publishedUrl = 'https://ais-pre-b2d4jgxm7fmujrghwywm36-807083370301.asia-southeast1.run.app?role=guest';
+  const publicShareUrl = currentOrigin;
 
-  // WhatsApp share template uses activeDevUrl so it opens immediately without 404!
-  const waShareText = `🏸 *Jadwal Badminton Sipetekkru*\n\nHalo tim Sipetekkru! Jadwal booking lapangan badminton kita sudah bisa dicek secara live & real-time di link berikut:\n${activeDevUrl}\n\nJadwal otomatis ter-update setiap ada slot baru/perubahan!`;
+  // WhatsApp share template
+  const waShareText = `🏸 *Jadwal Badminton Sipetekkru*\n\nHalo tim Sipetekkru! Jadwal booking lapangan badminton kita sudah bisa dicek secara live & real-time di link berikut:\n${publicShareUrl}\n\nJadwal otomatis ter-update setiap ada slot baru/perubahan!`;
 
   const waLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(waShareText)}`;
 
   const handleCopyActive = () => {
-    navigator.clipboard.writeText(activeDevUrl);
+    navigator.clipboard.writeText(publicShareUrl);
     setCopiedActive(true);
     setTimeout(() => setCopiedActive(false), 2500);
   };
@@ -119,7 +121,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <input
               type="text"
               readOnly
-              value={activeDevUrl}
+              value={publicShareUrl}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-emerald-300 font-mono select-all focus:outline-none"
             />
             <button

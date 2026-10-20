@@ -375,14 +375,14 @@ export const AuthService = {
       console.warn('Failed to parse current user from storage');
     }
 
-    // Default: Authenticated as Admin 'hrdsipetekfood@gmail.com' for initial preview convenience
-    const defaultAdmin: AuthUser = {
-      email: ADMIN_EMAIL,
-      role: 'ADMIN',
-      isAuthenticated: true,
+    // Default for any new visitor: Guest (Read-Only)
+    const defaultGuest: AuthUser = {
+      email: null,
+      role: 'GUEST',
+      isAuthenticated: false,
     };
-    this.saveUser(defaultAdmin);
-    return defaultAdmin;
+    this.saveUser(defaultGuest);
+    return defaultGuest;
   },
 
   saveUser(user: AuthUser): void {
