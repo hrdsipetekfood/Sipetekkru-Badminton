@@ -59,8 +59,17 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs rounded-lg">
-            {error}
+          <div className="p-3 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs rounded-xl space-y-2">
+            <p className="font-semibold">{error}</p>
+            {error.includes('RLS') && (
+              <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1.5 text-slate-300">
+                <p className="text-amber-300 font-bold">💡 Solusi Cepat di Supabase SQL Editor:</p>
+                <p className="text-slate-400">Jalankan perintah ini di Supabase SQL Editor untuk mengizinkan hapus:</p>
+                <div className="bg-slate-900 p-2 rounded font-mono text-[10px] text-emerald-400 select-all border border-slate-800">
+                  ALTER TABLE public.reservations DISABLE ROW LEVEL SECURITY;
+                </div>
+              </div>
+            )}
           </div>
         )}
 

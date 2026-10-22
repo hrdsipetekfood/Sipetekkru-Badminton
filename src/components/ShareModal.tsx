@@ -40,6 +40,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       : 'https://sipetekkru-badminton.vercel.app';
 
   const publicShareUrl = currentOrigin;
+  const publishedUrl = 'https://ais-pre-b2d4jgxm7fmujrghwywm36-807083370301.asia-southeast1.run.app';
 
   // WhatsApp share template
   const waShareText = `🏸 *Jadwal Badminton Sipetekkru*\n\nHalo tim Sipetekkru! Jadwal booking lapangan badminton kita sudah bisa dicek secara live & real-time di link berikut:\n${publicShareUrl}\n\nJadwal otomatis ter-update setiap ada slot baru/perubahan!`;

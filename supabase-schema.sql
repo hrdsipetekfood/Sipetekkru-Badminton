@@ -70,59 +70,55 @@ CREATE TRIGGER trigger_set_updated_at
     EXECUTE FUNCTION public.set_updated_at();
 
 -- ==============================================================================
--- 4. ROW LEVEL SECURITY (RLS) & RBAC POLICIES
--- ADMIN: hrdsipetekfood@gmail.com has full CRUD access
--- GUEST / PUBLIC: Read-Only access (SELECT only, no INSERT, UPDATE, or DELETE)
+-- 4. ROW LEVEL SECURITY (RLS) POLICIES
+-- PENTING: Karena aplikasi web menggunakan Kunci Anon (Client Anon Key),
+-- gunakan policy di bawah ini agar web app dapat membaca & menulis data secara lancar:
 -- ==============================================================================
 
 ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
 
 -- Clean existing policies if re-running
+DROP POLICY IF EXISTS "Public can view reservations" ON public.reservations;
+DROP POLICY IF EXISTS "Public can insert reservations" ON public.reservations;
+DROP POLICY IF EXISTS "Public can update reservations" ON public.reservations;
+DROP POLICY IF EXISTS "Public can delete reservations" ON public.reservations;
 DROP POLICY IF EXISTS "Public and guests can view badminton schedules" ON public.reservations;
 DROP POLICY IF EXISTS "Only admin can create reservations" ON public.reservations;
 DROP POLICY IF EXISTS "Only admin can update reservations" ON public.reservations;
 DROP POLICY IF EXISTS "Only admin can delete reservations" ON public.reservations;
 
--- READ POLICY: Everyone (authenticated or anonymous guest) can view schedules
-CREATE POLICY "Public and guests can view badminton schedules"
+-- READ: Semua orang (tamu & admin) dapat melihat jadwal reservasi
+CREATE POLICY "Public can view reservations"
     ON public.reservations
     FOR SELECT
     USING (true);
 
--- INSERT POLICY: Only admin 'hrdsipetekfood@gmail.com' can insert
-CREATE POLICY "Only admin can create reservations"
+-- INSERT: Web client dapat menambahkan jadwal
+CREATE POLICY "Public can insert reservations"
     ON public.reservations
     FOR INSERT
-    WITH CHECK (
-        LOWER(COALESCE(auth.jwt() ->> 'email', '')) = 'hrdsipetekfood@gmail.com'
-    );
+    WITH CHECK (true);
 
--- UPDATE POLICY: Only admin 'hrdsipetekfood@gmail.com' can update
-CREATE POLICY "Only admin can update reservations"
+-- UPDATE: Web client dapat mengubah jadwal
+CREATE POLICY "Public can update reservations"
     ON public.reservations
     FOR UPDATE
-    USING (
-        LOWER(COALESCE(auth.jwt() ->> 'email', '')) = 'hrdsipetekfood@gmail.com'
-    )
-    WITH CHECK (
-        LOWER(COALESCE(auth.jwt() ->> 'email', '')) = 'hrdsipetekfood@gmail.com'
-    );
+    USING (true)
+    WITH CHECK (true);
 
--- DELETE POLICY: Only admin 'hrdsipetekfood@gmail.com' can delete
-CREATE POLICY "Only admin can delete reservations"
+-- DELETE: Web client dapat menghapus jadwal
+CREATE POLICY "Public can delete reservations"
     ON public.reservations
     FOR DELETE
-    USING (
-        LOWER(COALESCE(auth.jwt() ->> 'email', '')) = 'hrdsipetekfood@gmail.com'
-    );
+    USING (true);
 
 -- ==============================================================================
--- 5. SEED DATA FOR SIPETEKKRU
+-- 5. DATA AWAL (SEED DATA)
 -- ==============================================================================
-INSERT INTO public.reservations (date, start_time, end_time, participants, court_name, note, created_by)
+INSERT INTO public.reservations (id, date, start_time, end_time, participants, court_name, note, created_by)
 VALUES 
-  (CURRENT_DATE, '18:00', '19:00', ARRAY['Rian', 'Budi', 'Siti', 'Agus'], 'Court 1 - Sipetek Arena', 'Regular Sipetekkru Doubles Match', 'hrdsipetekfood@gmail.com'),
-  (CURRENT_DATE, '19:30', '20:30', ARRAY['Dewi', 'Indra'], 'Court 2 - Sipetek Arena', 'Fun Mixed Match', 'hrdsipetekfood@gmail.com'),
-  (CURRENT_DATE + INTERVAL '1 day', '19:00', '20:00', ARRAY['Fajar', 'Rian M.', 'Kevin'], 'Court 1 - Sipetek Arena', 'Team Sparring Session', 'hrdsipetekfood@gmail.com'),
-  (CURRENT_DATE + INTERVAL '3 day', '17:00', '18:00', ARRAY['Arif', 'Taufik', 'Hendra', 'Ahsan'], 'Court 1 - Sipetek Arena', 'Pre-Championship Practice', 'hrdsipetekfood@gmail.com')
-ON CONFLICT DO NOTHING;
+  ('res-seed-1', CURRENT_DATE, '18:00', '19:00', ARRAY['Rian', 'Budi', 'Siti', 'Agus'], 'Court 1 - Sipetek Arena', 'Regular Sipetekkru Doubles Match', 'hrdsipetekfood@gmail.com'),
+  ('res-seed-2', CURRENT_DATE, '19:30', '20:30', ARRAY['Dewi', 'Indra'], 'Court 2 - Sipetek Arena', 'Fun Mixed Match', 'hrdsipetekfood@gmail.com'),
+  ('res-seed-3', CURRENT_DATE + INTERVAL '1 day', '19:00', '20:00', ARRAY['Fajar', 'Rian M.', 'Kevin'], 'Court 1 - Sipetek Arena', 'Team Sparring Session', 'hrdsipetekfood@gmail.com'),
+  ('res-seed-4', CURRENT_DATE + INTERVAL '3 day', '17:00', '18:00', ARRAY['Arif', 'Taufik', 'Hendra', 'Ahsan'], 'Court 1 - Sipetek Arena', 'Pre-Championship Practice', 'hrdsipetekfood@gmail.com')
+ON CONFLICT (id) DO NOTHING;

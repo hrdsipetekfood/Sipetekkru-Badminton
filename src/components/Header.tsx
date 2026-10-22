@@ -10,6 +10,8 @@ import {
   CalendarRange,
   RotateCcw,
   Share2,
+  RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { AuthUser, ADMIN_EMAIL } from '../types/reservation';
 
@@ -23,6 +25,9 @@ interface HeaderProps {
   onOpenShareModal: () => void;
   onToggleRole: () => void;
   onResetData: () => void;
+  onRefreshData?: () => Promise<void>;
+  isRefreshing?: boolean;
+  dataSource?: 'SUPABASE' | 'SERVER_API' | 'LOCAL_STORAGE';
   totalReservations: number;
   connectedDevicesCount: number;
 }
@@ -37,6 +42,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShareModal,
   onToggleRole,
   onResetData,
+  onRefreshData,
+  isRefreshing,
+  dataSource = 'LOCAL_STORAGE',
   totalReservations,
   connectedDevicesCount,
 }) => {
@@ -62,19 +70,37 @@ export const Header: React.FC<HeaderProps> = ({
                     Schedule
                   </span>
                 </div>
-                <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-                  <span>Court Booking & RBAC</span>
+                <div className="flex items-center space-x-2 text-[11px] text-slate-400 flex-wrap">
+                  {/* Data Source Badge */}
+                  <span
+                    onClick={onOpenSupabaseModal}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium cursor-pointer hover:underline"
+                    title="Klik untuk konfigurasi database Supabase"
+                  >
+                    {dataSource === 'SUPABASE' ? (
+                      <span className="text-emerald-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Supabase (Live)
+                      </span>
+                    ) : dataSource === 'SERVER_API' ? (
+                      <span className="text-cyan-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        Server Cache
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        Local / Offline
+                      </span>
+                    )}
+                  </span>
                   <span className="text-slate-600">•</span>
                   {/* Real-Time Live Sync Indicator */}
                   <span
                     title="Real-Time multi-device sync is active. Any changes instantly update across all connected phones and computers."
-                    className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium"
+                    className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium"
                   >
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span>Live Sync ({connectedDevicesCount} online)</span>
+                    <span>{totalReservations} Sesi Terjadwal</span>
                   </span>
                 </div>
               </div>
@@ -82,6 +108,16 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Mobile-only right quick action */}
             <div className="flex sm:hidden items-center space-x-1.5">
+              {onRefreshData && (
+                <button
+                  onClick={onRefreshData}
+                  disabled={isRefreshing}
+                  title="Sinkronkan data sekarang"
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+                </button>
+              )}
               <button
                 onClick={onOpenShareModal}
                 title="Bagikan Jadwal"
@@ -91,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 onClick={onOpenSupabaseModal}
-                title="Supabase SQL"
+                title="Supabase SQL & Koneksi"
                 className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-400 rounded-lg text-xs"
               >
                 <Database className="w-3.5 h-3.5" />
@@ -108,6 +144,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Controls: View Switcher, Role, New Slot */}
           <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 flex-wrap">
+            {/* Refresh / Sync Button */}
+            {onRefreshData && (
+              <button
+                onClick={onRefreshData}
+                disabled={isRefreshing}
+                title="Refresh dan sinkronkan data terbaru dari database"
+                className="hidden sm:flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : 'text-slate-400'}`} />
+                <span>{isRefreshing ? 'Sinkronisasi...' : 'Sinkronkan'}</span>
+              </button>
+            )}
+
             {/* Share Public Link Button */}
             <button
               onClick={onOpenShareModal}
@@ -174,21 +223,33 @@ export const Header: React.FC<HeaderProps> = ({
                   <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <div className="flex flex-col text-left">
                     <span className="font-semibold text-[10px] leading-tight text-amber-300">
-                      Guest View
+                      Mode Tamu
                     </span>
                     <span className="text-[9px] text-slate-400">Read-Only</span>
                   </div>
                 </div>
               )}
 
-              {/* Quick toggle button */}
-              <button
-                onClick={onToggleRole}
-                className="ml-2 px-2 py-0.5 text-[9px] rounded font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
-                title={isAdmin ? 'Keluar ke mode Tamu (Read-Only)' : 'Masuk sebagai Admin (hrdsipetekfood@gmail.com)'}
-              >
-                {isAdmin ? 'Logout' : 'Login Admin'}
-              </button>
+              {/* Action button */}
+              {isAdmin ? (
+                <button
+                  onClick={onToggleRole}
+                  className="ml-2 px-2 py-0.5 text-[9px] rounded font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition-colors flex items-center gap-1"
+                  title="Keluar ke mode Tamu (Read-Only)"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Logout</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAuthModal}
+                  className="ml-2 px-2 py-0.5 text-[10px] rounded font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors flex items-center gap-1"
+                  title="Masuk sebagai Admin dengan Password"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Login Admin</span>
+                </button>
+              )}
             </div>
 
             {/* Admin-only "New Slot" CTA */}

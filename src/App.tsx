@@ -13,6 +13,7 @@ import {
   Info,
   ChevronRight,
   Plus,
+  Lock,
 } from 'lucide-react';
 import {
   Reservation,
@@ -22,7 +23,12 @@ import {
   REQUIRED_SESSION_DURATION_MINUTES,
   MAX_PARTICIPANTS_PER_SESSION,
 } from './types/reservation';
-import { ReservationService, AuthService, subscribeToRealtime } from './services/supabaseService';
+import {
+  ReservationService,
+  AuthService,
+  subscribeToRealtime,
+  getActiveDataSource,
+} from './services/supabaseService';
 import { Header } from './components/Header';
 import { MonthCalendar } from './components/MonthCalendar';
 import { WeekCalendar } from './components/WeekCalendar';
@@ -36,6 +42,7 @@ import { ShareModal } from './components/ShareModal';
 export default function App() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [currentUser, setCurrentUser] = useState<AuthUser>(AuthService.getCurrentUser());
@@ -59,19 +66,38 @@ export default function App() {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   // Load initial data
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     setIsLoading(true);
     try {
-      const data = await ReservationService.getAll();
+      const data = await ReservationService.getAll(forceRefresh);
       setReservations(data);
     } catch (err) {
       console.error('Failed to load reservations', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Manual refresh / sync handler
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      const data = await ReservationService.getAll(true);
+      setReservations(data);
+      const ds = getActiveDataSource();
+      showToast(
+        ds.source === 'SUPABASE'
+          ? `⚡ Sinkronisasi berhasil! Memuat ${data.length} jadwal langsung dari database Supabase.`
+          : `⚡ Data dimuat ulang (${data.length} jadwal).`
+      );
+    } catch (e: any) {
+      showToast(`Gagal memuat data: ${e.message || 'Error'}`);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -96,16 +122,14 @@ export default function App() {
     };
   }, []);
 
-  // Switch between Admin and Guest for rapid testing
+  // Role actions: Logout if admin, or open password dialog if guest
   const handleToggleRole = () => {
     if (currentUser.role === 'ADMIN') {
-      const guest = AuthService.loginAsGuest();
+      const guest = AuthService.logout();
       setCurrentUser(guest);
-      showToast('Switched to Guest mode (Read-Only). Write controls hidden.');
+      showToast('Berhasil logout. Mode Tamu (Read-Only) aktif.');
     } else {
-      const admin = AuthService.loginAsAdmin();
-      setCurrentUser(admin);
-      showToast(`Switched to Admin (${ADMIN_EMAIL}). Full CRUD unlocked.`);
+      setIsAuthModalOpen(true);
     }
   };
 
@@ -152,9 +176,16 @@ export default function App() {
         },
         currentUser
       );
-      if (res.error) return { error: res.error };
+      if (res.error && !res.data) {
+        showToast(`Gagal: ${res.error}`);
+        return { error: res.error };
+      }
       await loadData();
-      showToast('Reservation updated successfully.');
+      if (res.error) {
+        showToast(`⚠️ ${res.error}`);
+      } else {
+        showToast('Jadwal reservasi berhasil diperbarui.');
+      }
       return {};
     } else {
       const res = await ReservationService.create(
@@ -169,9 +200,16 @@ export default function App() {
         },
         currentUser
       );
-      if (res.error) return { error: res.error };
+      if (res.error && !res.data) {
+        showToast(`Gagal: ${res.error}`);
+        return { error: res.error };
+      }
       await loadData();
-      showToast('New badminton reservation slot created.');
+      if (res.error) {
+        showToast(`⚠️ ${res.error}`);
+      } else {
+        showToast('Jadwal reservasi baru berhasil dibuat.');
+      }
       return {};
     }
   };
@@ -179,9 +217,12 @@ export default function App() {
   // Delete Reservation
   const handleDeleteReservation = async (id: string): Promise<{ error?: string }> => {
     const res = await ReservationService.delete(id, currentUser);
-    if (res.error) return { error: res.error };
-    await loadData();
-    showToast('Reservation slot removed.');
+    if (!res.success || res.error) {
+      showToast(`⚠️ ${res.error || 'Gagal menghapus jadwal di database.'}`);
+      return { error: res.error || 'Gagal menghapus jadwal di database.' };
+    }
+    await loadData(true);
+    showToast('Jadwal reservasi berhasil dihapus.');
     return {};
   };
 
@@ -226,6 +267,9 @@ export default function App() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onToggleRole={handleToggleRole}
         onResetData={handleResetData}
+        onRefreshData={handleRefreshData}
+        isRefreshing={isRefreshing}
+        dataSource={getActiveDataSource().source}
         totalReservations={reservations.length}
         connectedDevicesCount={connectedDevicesCount}
       />
@@ -250,19 +294,19 @@ export default function App() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-amber-200">
-                  Guest Read-Only Mode Active
+                  Mode Tamu (Read-Only) Aktif
                 </h4>
                 <p className="text-xs text-amber-300/80">
-                  You can view the Sipetekkru reservation calendar. Full CRUD controls are strictly restricted to{' '}
-                  <strong className="text-amber-100 font-mono">{ADMIN_EMAIL}</strong> via Supabase RLS.
+                  Anda sedang melihat jadwal reservasi badminton Sipetekkru. Pembuatan, pengubahan, atau penghapusan jadwal hanya dapat dilakukan oleh Admin setelah login dengan password.
                 </p>
               </div>
             </div>
             <button
-              onClick={handleToggleRole}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-colors shadow-sm shrink-0"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors shadow-sm shrink-0 flex items-center gap-1.5"
             >
-              Log in as Admin ({ADMIN_EMAIL})
+              <Lock className="w-3.5 h-3.5" />
+              <span>Login Admin</span>
             </button>
           </div>
         )}
@@ -478,6 +522,7 @@ export default function App() {
       <SupabaseModal
         isOpen={isSupabaseModalOpen}
         onClose={() => setIsSupabaseModalOpen(false)}
+        onRefreshData={handleRefreshData}
       />
 
       {/* 5. Auth / Role Switcher Modal */}
